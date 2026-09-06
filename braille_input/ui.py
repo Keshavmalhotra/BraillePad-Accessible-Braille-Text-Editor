@@ -18,10 +18,10 @@ PHYSICAL_DOTS = {"f": "1", "d": "2", "s": "3", "j": "4", "k": "5", "l": "6"}
 
 
 class BrailleTextCtrl(wx.TextCtrl):
-    def __init__(self, owner):
+    def __init__(self, parent, owner):
         style = (wx.TE_MULTILINE | wx.TE_RICH2 | wx.TE_DONTWRAP |
                  wx.HSCROLL | wx.VSCROLL | wx.WANTS_CHARS)
-        super().__init__(owner, style=style)
+        super().__init__(parent, style=style)
         self.owner = owner
         self.composer = CellComposer()
         self.SetName("Braille text document")
@@ -64,13 +64,13 @@ class BrailleTextCtrl(wx.TextCtrl):
 
     def accessibility_line_range(self):
         pos = self.GetInsertionPoint()
-        line = self.LineFromPosition(pos)
-        start = self.PositionToXY(pos)[0] if False else self.XYToPosition(0, line)
+        _ok, _column, line = self.PositionToXY(pos)
+        start = self.XYToPosition(0, line)
         end = self.XYToPosition(self.GetLineLength(line), line)
         return start, end, pos
 
     def line_diagnostics(self):
-        pos = self.GetInsertionPoint(); line = self.LineFromPosition(pos)
+        pos = self.GetInsertionPoint(); _ok, _column, line = self.PositionToXY(pos)
         start, end, caret = self.accessibility_line_range()
         return {"document": self.GetValue(), "logical_line_count": self.GetNumberOfLines(),
                 "caret_position": caret, "current_block": line,
@@ -85,7 +85,7 @@ class BrailleWindow(wx.Frame):
         self.document = BrailleDocument(); self.path = None
         self.announcer = Announcer()
         panel = wx.Panel(self); box = wx.BoxSizer(wx.VERTICAL)
-        self.editor = BrailleTextCtrl(self); box.Add(self.editor, 1, wx.EXPAND)
+        self.editor = BrailleTextCtrl(panel, self); box.Add(self.editor, 1, wx.EXPAND)
         self.status = wx.StaticText(panel, label="Line 1, column 1")
         box.Add(self.status, 0, wx.EXPAND | wx.ALL, 3); panel.SetSizer(box)
         self._make_menu(); self.CreateStatusBar(); self.SetStatusText("Braille input: mandatory")
@@ -104,11 +104,11 @@ class BrailleWindow(wx.Frame):
         lang = wx.Menu()
         for key, info in TABLES.items():
             item = lang.AppendRadioItem(wx.ID_ANY, f"{info.language} — {info.standard} ({info.version})")
-            item.SetData(key); self.Bind(wx.EVT_MENU, lambda e, k=key: self.set_language(k), item)
+            self.Bind(wx.EVT_MENU, lambda e, k=key: self.set_language(k), item)
         bar.Append(lang, "Braille language"); self.SetMenuBar(bar)
 
     def _cursor_changed(self):
-        pos = self.editor.GetInsertionPoint(); line = self.editor.LineFromPosition(pos)
+        pos = self.editor.GetInsertionPoint(); _ok, _column, line = self.editor.PositionToXY(pos)
         column = pos - self.editor.XYToPosition(0, line)
         self.status.SetLabel(f"Line {line + 1}, column {column + 1}")
 
