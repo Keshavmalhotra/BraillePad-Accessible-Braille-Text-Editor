@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from .tables import EnglishGrade1, available_tables, TABLES
+from .tables import EnglishGrade1, available_tables, canonical_cell, TABLES
 
 @dataclass(frozen=True)
 class BrailleCell:
@@ -50,7 +50,7 @@ class BrailleDocument:
         while end < len(self.cells) and self.cells[end].dots: end += 1
         return start, [c.dots for c in self.cells[start:end]]
     def commit(self, dots):
-        pattern = "".join(str(d) for d in sorted(set(int(x) for x in dots)))
+        pattern = canonical_cell(dots)
         meaning = self.table.translate(pattern, self.numeric)
         # Indicators are part of the input stream, but are not printable text.
         if pattern == "6":
