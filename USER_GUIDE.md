@@ -33,7 +33,8 @@ during navigation and saving.
 
 ## 3. Enter Braille cells
 
-Braille input is enabled by default. Compose one cell with this layout:
+Braille input is mandatory. Compose every printable character through a Braille
+cell using this layout:
 
 | Keyboard key | Dot |
 |---|---:|
@@ -56,11 +57,11 @@ Dot order does not matter and duplicate dots are ignored. For example, `FDSK`,
 | `Backspace` | Remove the last dot while composing; otherwise delete text normally. |
 | `Enter` | Commit a pending cell, then create a new line; with no pending cell, just create a line. |
 | `Space` | Commit a pending cell, or insert an ordinary space when empty. |
-| `Ctrl+B` | Toggle Braille input on or off. |
+| `Ctrl+B` | No longer changes input mode; Braille input is always enabled. |
 
-While Braille input is enabled, ordinary printable letters and punctuation are
-not inserted directly. Use their Braille cells or press `Ctrl+B` to switch to
-normal keyboard input. `Tab` remains a normal editor key.
+Ordinary printable letters and punctuation are not inserted directly. Use their
+Braille cells. `Tab` remains a normal editor key, and command shortcuts and
+navigation continue to work normally.
 
 ## 4. Language and number handling
 
@@ -127,14 +128,12 @@ Confirm that PySide6 is installed and that
 
 ### Letters or punctuation do not appear
 
-Braille input is probably enabled. Press `Ctrl+B` for ordinary keyboard input,
-or enter the character using its Braille cell.
+Braille input is mandatory. Enter the character using its Braille cell.
 
 ### A number key does not type a number
 
-Keys `1`–`6` are Braille dot keys while Braille input is enabled. Use the
-English number sign and numeric mode, paste the number, or disable Braille
-input with `Ctrl+B`.
+Keys `1`–`6` are always Braille dot keys. Use the English number sign and
+numeric mode, or paste the number.
 
 ### Translation fails
 

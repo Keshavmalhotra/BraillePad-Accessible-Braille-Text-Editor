@@ -12,16 +12,15 @@ PHYSICAL_DOTS = {"f": "1", "d": "2", "s": "3", "j": "4", "k": "5", "l": "6"}
 
 class BrailleTextEdit(QPlainTextEdit):
     def __init__(self, owner):
-        super().__init__(); self.owner=owner; self.composer=CellComposer(); self.braille_mode=True
+        super().__init__(); self.owner=owner; self.composer=CellComposer()
         # Keep visual lines identical to logical QTextBlocks.  Long lines are
         # horizontally scrollable instead of being split into visual rows.
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setAccessibleName("Braille text document")
     def keyPressEvent(self, event):
         key, mods, text = event.key(), event.modifiers(), event.text()
-        if key == Qt.Key_B and mods & Qt.ControlModifier: self.braille_mode=not self.braille_mode; self.owner.announcer.send(f"Braille input {'on' if self.braille_mode else 'off'}."); return
         dot = PHYSICAL_DOTS.get(text.lower()) if text else None
-        if self.braille_mode and dot:
+        if dot:
             self.composer.add(dot); self.owner.announcer.composing(self.composer.dots); self.owner.statusBar().showMessage(f"Braille dots: {self.composer.dots}"); return
         if key == Qt.Key_Backspace and self.composer.dots: self.composer.remove_last(); self.owner.announcer.composing(self.composer.dots); return
         # Space has two deliberately distinct meanings.  With a composed
@@ -43,7 +42,7 @@ class BrailleTextEdit(QPlainTextEdit):
         # text that was not produced by the dot composer.  This also blocks
         # punctuation typed directly; punctuation must use its Braille cell.
         command_mods = Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier
-        if self.braille_mode and text and text.isprintable() and key != Qt.Key_Space and not (mods & command_mods):
+        if text and text.isprintable() and key != Qt.Key_Space and not (mods & command_mods):
             return
         super().keyPressEvent(event)
         self.owner._cursor_changed()

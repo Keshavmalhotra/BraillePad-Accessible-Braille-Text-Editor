@@ -25,9 +25,10 @@ deduplicated and normalized, so `FDSK` and `1245` describe the same cell.
 `Backspace` removes the most recently entered dot. `Enter` commits a pending
 cell and starts a new native editor line.
 
-`Ctrl+B` toggles Braille input. When it is off, the editor accepts ordinary
-printable keyboard input. Navigation, selection, clipboard commands, undo,
-redo, and editing remain standard Qt text-editor operations.
+Braille input is mandatory and cannot be disabled. Ordinary printable letters
+and punctuation must be entered through Braille cells. Navigation, selection,
+clipboard commands, undo, redo, and editing remain standard Qt text-editor
+operations.
 
 ## Translation profiles
 
