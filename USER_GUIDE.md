@@ -38,7 +38,9 @@ The text area is PySide6's native `QPlainTextEdit`, backed by Qt's
 only custom editor-subclass behavior; document lines, caret movement,
 selection, clipboard, undo/redo, accessibility text, and no-wrap scrolling
 remain native Qt behavior. This preserves real empty lines and avoids a second
-custom current-line or current-caret model.
+custom current-line or current-caret model. Empty lines receive no custom
+speech announcement; native accessibility is allowed to handle their actual
+zero-length text range naturally.
 
 ## 3. Enter Braille cells
 
@@ -118,7 +120,8 @@ Assistive technology can inspect the actual document, caret, logical lines,
 selections, and empty lines. The status bar also reports line and column.
 
 AO2 announcements may report composed dots, committed translations, language
-changes, mode changes, and blank-line transitions. Exact speech or Braille
+and mode changes. Empty lines do not produce a custom announcement, and
+neighboring line text is never used as a fallback. Exact speech or Braille
 output depends on the active AO2-compatible driver. Live NVDA/JAWS and
 physical Braille-display coverage is not yet verified.
 

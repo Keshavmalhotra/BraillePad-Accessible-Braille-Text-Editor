@@ -289,7 +289,7 @@ def test_navigation_does_not_use_custom_announcements():
     window.close()
 
 
-def test_blank_line_fallback_reports_actual_empty_block_only():
+def test_empty_line_has_native_caret_without_custom_announcement():
     from virtual_abacus.accessibility import CaptureOutput
     window = BrailleWindow(); window.announcer.output = CaptureOutput()
     editor = window.editor; editor.setPlainText("Line 1\n\nLine 2"); editor.setFocus()
@@ -299,21 +299,15 @@ def test_blank_line_fallback_reports_actual_empty_block_only():
     QTest.keyClick(editor, Qt.Key_Down)
     assert editor.textCursor().blockNumber() == 1
     assert editor.textCursor().block().text() == ""
-    assert [m for m in window.announcer.output.messages if "blank line" in m.lower()] == ["Blank line."]
-    assert "Line 1" not in window.announcer.output.messages
-    assert "Line 2" not in window.announcer.output.messages
-
-    # Repeated cursor notifications on the same empty block do not duplicate.
-    window._cursor_changed(); window._cursor_changed()
-    assert [m for m in window.announcer.output.messages if "blank line" in m.lower()] == ["Blank line."]
+    assert window.announcer.output.messages == []
     QTest.keyClick(editor, Qt.Key_Down)
     assert editor.textCursor().blockNumber() == 2
-    assert [m for m in window.announcer.output.messages if "blank line" in m.lower()] == ["Blank line."]
-    assert "blank line" not in editor.toPlainText().lower()
+    assert editor.textCursor().block().text() == "Line 2"
+    assert "Line 1" not in window.announcer.output.messages
     window.close()
 
 
-def test_accessibility_follows_caret_through_consecutive_empty_blocks():
+def test_accessibility_does_not_announce_consecutive_empty_blocks():
     from virtual_abacus.accessibility import CaptureOutput
     window = BrailleWindow(); window.announcer.output = CaptureOutput()
     editor = window.editor; editor.setPlainText("FIRST\n\n\nSECOND")
@@ -327,9 +321,7 @@ def test_accessibility_follows_caret_through_consecutive_empty_blocks():
     QTest.keyClick(editor, Qt.Key_Down)
     assert editor.textCursor().blockNumber() == 2
     assert editor.textCursor().block().text() == ""
-    assert [m for m in window.announcer.output.messages if "blank line" in m.lower()] == [
-        "Blank line.", "Blank line."
-    ]
+    assert window.announcer.output.messages == []
     assert all("FIRST" not in m and "SECOND" not in m for m in window.announcer.output.messages)
 
     # Reverse navigation returns through the same actual empty blocks.
@@ -338,9 +330,7 @@ def test_accessibility_follows_caret_through_consecutive_empty_blocks():
     QTest.keyClick(editor, Qt.Key_Up)
     assert editor.textCursor().blockNumber() == 0
     assert editor.textCursor().block().text() == "FIRST"
-    assert [m for m in window.announcer.output.messages if "blank line" in m.lower()] == [
-        "Blank line.", "Blank line.", "Blank line."
-    ]
+    assert window.announcer.output.messages == []
     window.close()
 
 

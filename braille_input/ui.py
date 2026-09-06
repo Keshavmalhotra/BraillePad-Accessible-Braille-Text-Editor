@@ -92,7 +92,7 @@ class BrailleTextEdit(QPlainTextEdit):
 
 class BrailleWindow(QMainWindow):
     def __init__(self):
-        super().__init__(); self.setWindowTitle("BraillePad: Accessible Braille Text Editor"); self.document=BrailleDocument(); self.editor=BrailleTextEdit(self); self.setCentralWidget(self.editor); self.setStatusBar(QStatusBar()); self.announcer=Announcer(); self.path=None; self._last_blank_range=None; self._make_actions(); self.editor.cursorPositionChanged.connect(self._cursor_changed); self.editor.textChanged.connect(self._document_changed)
+        super().__init__(); self.setWindowTitle("BraillePad: Accessible Braille Text Editor"); self.document=BrailleDocument(); self.editor=BrailleTextEdit(self); self.setCentralWidget(self.editor); self.setStatusBar(QStatusBar()); self.announcer=Announcer(); self.path=None; self._make_actions(); self.editor.cursorPositionChanged.connect(self._cursor_changed)
     def _make_actions(self):
         menu=self.menuBar().addMenu("File")
         for name, shortcut, fn in (("New","Ctrl+N",self.new_document),("Open","Ctrl+O",self.open_document),("Save","Ctrl+S",self.save_document),("Save As","Ctrl+Shift+S",self.save_as)):
@@ -112,29 +112,11 @@ class BrailleWindow(QMainWindow):
         # Keep assistive technology synchronized with the native caret after
         # Up/Down, Enter, deletion, and edits.  Qt's text interface reads the
         # live cursor; this event makes the change observable immediately.
-        # Qt/NVDA can derive the preceding paragraph as spoken context when a
-        # caret-moved event targets a zero-length block.  For an empty line the
-        # explicit blank announcement below is the complete announcement;
-        # the live QAccessible text interface still exposes the real caret and
-        # range without manufacturing a neighboring line event.
-        if start != end:
-            QAccessible.updateAccessibility(QAccessibleEvent(self.editor, QAccessible.Event.TextCaretMoved))
+        # The native Qt accessibility interface remains the source of truth,
+        # including zero-length ranges for empty QTextBlocks. Do not synthesize
+        # speech or substitute adjacent text for an empty line.
+        QAccessible.updateAccessibility(QAccessibleEvent(self.editor, QAccessible.Event.TextCaretMoved))
         self.statusBar().showMessage(f"Line {block.blockNumber()+1}, column {cursor.columnNumber()+1}")
-        # QPlainTextEdit remains the source of truth.  This is only a small
-        # AO2 fallback for stacks that expose an empty QTextBlock without a
-        # usable spoken indication.  It is transition-based, so it cannot
-        # repeatedly speak while the caret remains in the same blank block.
-        if start == end:
-            blank_range = (start, end, caret)
-            if blank_range != self._last_blank_range:
-                self._last_blank_range = blank_range
-                self.announcer.blank_line()
-        else:
-            self._last_blank_range = None
-    def _document_changed(self):
-        # A new document can reuse the same offset. Invalidate the fallback
-        # rather than identifying a line by cached text or block number.
-        self._last_blank_range = None
     def set_language(self, key):
         self.document.set_table(key); self.editor.setLayoutDirection(Qt.RightToLeft if self.document.table.info.rtl else Qt.LeftToRight)
         self.announcer.send(f"Braille language: {self.document.table.info.language}.")
@@ -191,7 +173,7 @@ class BrailleWindow(QMainWindow):
         end=p
         while end<len(text) and not text[end].isspace(): end+=1
         self.announcer.send(text[start:end] or "Blank.", False)
-    def announce_line(self): self.announcer.send(self.editor.textCursor().block().text() or "Blank line.")
+    def announce_line(self): self.announcer.send(self.editor.textCursor().block().text())
     def announce_paragraph(self):
         text=self.editor.toPlainText(); index=len(text[:self.editor.textCursor().position()].split("\n\n")); parts=text.split("\n\n"); self.announcer.send(f"Paragraph {index}. {parts[index-1] if index<=len(parts) else ''}")
     def announce_document(self): self.announcer.send(self.editor.toPlainText() or "Document empty.")
