@@ -5,6 +5,12 @@ six-dot Braille. It is built with Python, PySide6, and the bundled Liblouis
 translation engine. The editor is keyboard-first and exposes its document
 through Qt's accessibility interfaces.
 
+## Project attribution
+
+This project was created entirely using OpenAI Codex. Keshav Malhotra, the
+project creator, did not write a single line of code manually; the source code
+was generated and developed through Codex.
+
 ## How it works
 
 BraillePad treats Braille as an input method, not as a separate document

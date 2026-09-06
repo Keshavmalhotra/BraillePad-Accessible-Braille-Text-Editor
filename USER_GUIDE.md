@@ -1,5 +1,11 @@
 # BraillePad User Guide
 
+## Project attribution
+
+This project was created entirely using OpenAI Codex. Keshav Malhotra, the
+project creator, did not write a single line of code manually; the source code
+was generated and developed through Codex.
+
 ## 1. Start BraillePad
 
 On Windows, double-click `BraillePad.pyw` or `run.bat`. From PowerShell or a
