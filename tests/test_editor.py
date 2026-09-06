@@ -401,3 +401,22 @@ def test_caret_and_accessibility_range_follow_each_logical_line():
         (0, 0, "Alpha", 0, 5, 0),
     ]
     window.close()
+
+
+def test_regression_three_blank_lines_and_text_round_trip():
+    """The A, Enter, Enter, Enter, B workflow keeps every line break."""
+    window = BrailleWindow(); editor = window.editor; editor.setFocus()
+    editor.setPlainText("A")
+    editor.moveCursor(editor.textCursor().MoveOperation.End)
+    for _ in range(3):
+        QTest.keyClick(editor, Qt.Key_Return)
+    editor.insertPlainText("B")
+
+    assert editor.toPlainText() == "A\n\n\nB"
+    assert [block.text() for block in iter_blocks(editor)] == ["A", "", "", "B"]
+
+    path = Path("three_blank_lines.txt").resolve()
+    window.path = path; window.save_document()
+    assert path.read_text(encoding="utf-8") == "A\n\n\nB"
+    path.unlink(missing_ok=True)
+    window.close()

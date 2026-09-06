@@ -31,6 +31,15 @@ Copy, Paste), and **Braille language** (translation-profile selection). The
 status bar shows the current logical line and column. Empty lines are retained
 during navigation and saving.
 
+### Why the editor uses Qt
+
+The text area is PySide6's native `QPlainTextEdit`, backed by Qt's
+`QTextDocument`, `QTextBlock`, and `QTextCursor`. Braille key handling is the
+only custom editor-subclass behavior; document lines, caret movement,
+selection, clipboard, undo/redo, accessibility text, and no-wrap scrolling
+remain native Qt behavior. This preserves real empty lines and avoids a second
+custom current-line or current-caret model.
+
 ## 3. Enter Braille cells
 
 Braille input is mandatory. Compose every printable character through a Braille

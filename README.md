@@ -5,6 +5,27 @@ six-dot Braille. It is built with Python, PySide6, and the bundled Liblouis
 translation engine. The editor is keyboard-first and exposes its document
 through Qt's accessibility interfaces.
 
+## UI and editor architecture
+
+The current stack was reviewed for caret, blank-line, wrapping, navigation,
+and accessibility problems:
+
+| Concern | Current implementation |
+|---|---|
+| GUI framework | PySide6 / Qt Widgets |
+| Text editor | Native `QPlainTextEdit` subclass used only for Braille key input |
+| Document model | Native Qt `QTextDocument` and `QTextBlock` objects |
+| Cursor and selection | Native `QTextCursor` |
+| Accessibility | Qt accessible text interface with a minimal AO2 blank-line fallback |
+| Wrapping | Native `NoWrap`; long lines scroll horizontally |
+| Editing | Native Qt navigation, selection, clipboard, undo, and redo |
+
+This is intentionally not a custom line/caret model. Regression tests verify
+real Enter-created lines, consecutive empty blocks, native Up/Down movement,
+no-wrap behavior, boundary stopping, and correct empty-line announcements.
+Because the current native widget satisfies these requirements, no replacement
+editor library is used.
+
 ## Project attribution
 
 This project was created entirely using OpenAI Codex. Keshav Malhotra, the
