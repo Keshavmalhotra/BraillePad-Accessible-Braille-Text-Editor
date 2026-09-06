@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence, QTextCursor, QAccessible, QAccessibleEvent
+from PySide6.QtGui import QAction, QKeySequence, QTextCursor, QAccessible, QAccessibleEvent, QTextOption
 from PySide6.QtWidgets import QMainWindow, QPlainTextEdit, QFileDialog, QStatusBar
 from PySide6.QtGui import QActionGroup
 from .tables import TABLES
@@ -15,7 +15,11 @@ class BrailleTextEdit(QPlainTextEdit):
         super().__init__(); self.owner=owner; self.composer=CellComposer()
         # Keep visual lines identical to logical QTextBlocks.  Long lines are
         # horizontally scrollable instead of being split into visual rows.
+        # Disable both Qt's editor line-wrap mode and the underlying document
+        # word-wrap policy. This keeps every logical line a single navigation
+        # row; Up/Down never moves through visual wrapped fragments.
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setWordWrapMode(QTextOption.WrapMode.NoWrap)
         self.setAccessibleName("Braille text document")
     def keyPressEvent(self, event):
         key, mods, text = event.key(), event.modifiers(), event.text()

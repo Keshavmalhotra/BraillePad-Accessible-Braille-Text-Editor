@@ -4,6 +4,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QTextOption
 from braille_input.ui import BrailleWindow
 from braille_input.ui import PHYSICAL_DOTS
 from braille_input.tables import PROFILES
@@ -376,6 +377,23 @@ def test_long_line_remains_one_logical_line_and_empty_lines_are_not_skipped():
     QTest.keyClick(editor, Qt.Key_Down)
     assert editor.textCursor().blockNumber() == 3
     assert editor.document().blockCount() == 4
+    assert editor.textCursor().block().text() == long_line
+    window.close()
+
+
+def test_arrow_navigation_never_uses_wrapped_fragments():
+    window = BrailleWindow(); editor = window.editor; editor.setFocus()
+    long_line = "x" * 5000
+    editor.setPlainText(long_line + "\nEND")
+    assert editor.lineWrapMode() == editor.LineWrapMode.NoWrap
+    assert editor.wordWrapMode() == QTextOption.WrapMode.NoWrap
+
+    editor.moveCursor(editor.textCursor().MoveOperation.Start)
+    QTest.keyClick(editor, Qt.Key_Down)
+    assert editor.textCursor().blockNumber() == 1
+    QTest.keyClick(editor, Qt.Key_Up)
+    assert editor.textCursor().blockNumber() == 0
+    assert editor.textCursor().positionInBlock() == 0
     window.close()
 
 
