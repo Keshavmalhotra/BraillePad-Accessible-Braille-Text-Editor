@@ -65,6 +65,8 @@ class BrailleDocument:
         return cell
     def space(self):
         self.cells.insert(self.cursor, BrailleCell("", " ", "space")); self.cursor += 1; self.numeric = False
+    def line_break(self):
+        self.cells.insert(self.cursor, BrailleCell("", "\n", "linebreak")); self.cursor += 1; self.numeric = False
     def backspace(self):
         if self.cursor: self.cursor -= 1; return self.cells.pop(self.cursor)
     def snapshot(self): return {"version":2,"language":self.language_key,"cursor":self.cursor,"numeric":self.numeric,"capital_pending":self.capital_pending,"cells":[asdict(c) for c in self.cells]}

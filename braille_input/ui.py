@@ -1,21 +1,28 @@
 import json
 from pathlib import Path
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QKeySequence, QTextCursor, QAccessible, QAccessibleEvent
 from PySide6.QtWidgets import QMainWindow, QPlainTextEdit, QFileDialog, QStatusBar
 from PySide6.QtGui import QActionGroup
 from .tables import TABLES
 from .engine import CellComposer, BrailleDocument
 from .accessibility import Announcer
 
+PHYSICAL_DOTS = {"f": "1", "d": "2", "s": "3", "j": "4", "k": "5", "l": "6"}
+
 class BrailleTextEdit(QPlainTextEdit):
     def __init__(self, owner):
-        super().__init__(); self.owner=owner; self.composer=CellComposer(); self.braille_mode=True; self.setAccessibleName("Braille text document")
+        super().__init__(); self.owner=owner; self.composer=CellComposer(); self.braille_mode=True
+        # Keep visual lines identical to logical QTextBlocks.  Long lines are
+        # horizontally scrollable instead of being split into visual rows.
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setAccessibleName("Braille text document")
     def keyPressEvent(self, event):
         key, mods, text = event.key(), event.modifiers(), event.text()
         if key == Qt.Key_B and mods & Qt.ControlModifier: self.braille_mode=not self.braille_mode; self.owner.announcer.send(f"Braille input {'on' if self.braille_mode else 'off'}."); return
-        if self.braille_mode and text and text in "123456": self.composer.add(text); self.owner.announcer.composing(self.composer.dots); self.owner.statusBar().showMessage(f"Braille dots: {self.composer.dots}"); return
-        if self.braille_mode and text and text in "7890": self.owner.announcer.send("Invalid Braille dot. Use dots 1 through 6."); return
+        dot = PHYSICAL_DOTS.get(text.lower()) if text else None
+        if self.braille_mode and dot:
+            self.composer.add(dot); self.owner.announcer.composing(self.composer.dots); self.owner.statusBar().showMessage(f"Braille dots: {self.composer.dots}"); return
         if key == Qt.Key_Backspace and self.composer.dots: self.composer.remove_last(); self.owner.announcer.composing(self.composer.dots); return
         # Space has two deliberately distinct meanings.  With a composed
         # cell it is the cell-commit key and must be consumed; otherwise it is
@@ -23,7 +30,12 @@ class BrailleTextEdit(QPlainTextEdit):
         # space after every Braille cell.
         if key == Qt.Key_Space and self.composer.dots:
             self.owner.commit_cell(); return
-        if self.composer.dots and key in (Qt.Key_Return, Qt.Key_Enter): self.owner.commit_cell(); super().keyPressEvent(event); return
+        if key == Qt.Key_Space:
+            self.owner.insert_space(); return
+        if self.composer.dots and key in (Qt.Key_Return, Qt.Key_Enter):
+            self.owner.commit_cell(); self.owner.insert_line_break(event); return
+        if key in (Qt.Key_Return, Qt.Key_Enter):
+            self.owner.insert_line_break(event); return
 
         # Braille mode is an input method, not a second ordinary keyboard
         # path.  Let command shortcuts (copy, paste, undo, etc.) and all
@@ -34,10 +46,50 @@ class BrailleTextEdit(QPlainTextEdit):
         if self.braille_mode and text and text.isprintable() and key != Qt.Key_Space and not (mods & command_mods):
             return
         super().keyPressEvent(event)
+        self.owner._cursor_changed()
+
+    def accessibility_line_range(self):
+        """Return the actual current line range and caret offset.
+
+        The range is derived from the live Qt cursor on every call.  In
+        particular, an empty QTextBlock is a real line whose range has equal
+        start and end offsets; it must not be replaced with a neighbouring
+        block's range.
+        """
+        cursor = self.textCursor()
+        block = cursor.block()
+        start = block.position()
+        return start, start + len(block.text()), cursor.position()
+
+    def line_diagnostics(self):
+        """Return the native document/caret/accessibility state for debugging."""
+        cursor = self.textCursor()
+        block = cursor.block()
+        start, end, caret = self.accessibility_line_range()
+        accessible_text = ""
+        accessible_caret = None
+        interface = QAccessible.queryAccessibleInterface(self)
+        text_interface = interface.textInterface() if interface else None
+        if text_interface:
+            accessible_caret = text_interface.cursorPosition()
+            accessible_text = text_interface.text(0, text_interface.characterCount())
+        return {
+            "document": self.toPlainText(),
+            "logical_line_count": self.document().blockCount(),
+            "caret_position": cursor.position(),
+            "current_block": block.blockNumber(),
+            "current_block_text": block.text(),
+            "line_start": start,
+            "line_end": end,
+            "accessibility_range": (start, end, caret),
+            "accessibility_caret": accessible_caret,
+            "accessibility_text": accessible_text,
+            "wrap_mode": self.lineWrapMode().name,
+        }
 
 class BrailleWindow(QMainWindow):
     def __init__(self):
-        super().__init__(); self.setWindowTitle("Six-Dot Braille Text Editor"); self.document=BrailleDocument(); self.editor=BrailleTextEdit(self); self.setCentralWidget(self.editor); self.setStatusBar(QStatusBar()); self.announcer=Announcer(); self.path=None; self._make_actions(); self.editor.cursorPositionChanged.connect(self._cursor_changed)
+        super().__init__(); self.setWindowTitle("Six-Dot Braille Text Editor"); self.document=BrailleDocument(); self.editor=BrailleTextEdit(self); self.setCentralWidget(self.editor); self.setStatusBar(QStatusBar()); self.announcer=Announcer(); self.path=None; self._last_blank_range=None; self._make_actions(); self.editor.cursorPositionChanged.connect(self._cursor_changed); self.editor.textChanged.connect(self._document_changed)
     def _make_actions(self):
         menu=self.menuBar().addMenu("File")
         for name, shortcut, fn in (("New","Ctrl+N",self.new_document),("Open","Ctrl+O",self.open_document),("Save","Ctrl+S",self.save_document),("Save As","Ctrl+Shift+S",self.save_as)):
@@ -48,10 +100,38 @@ class BrailleWindow(QMainWindow):
         braille=self.menuBar().addMenu("Braille language"); group=QActionGroup(self); group.setExclusive(True)
         for key, info in TABLES.items():
             action=QAction(f"{info.language} — {info.standard} ({info.version})", self, checkable=True); action.setData(key); action.setChecked(key == self.document.language_key); action.triggered.connect(lambda checked, k=key: self.set_language(k)); group.addAction(action); braille.addAction(action)
-        read=self.menuBar().addMenu("Read")
-        for name, shortcut, fn in (("Current line","F6",self.announce_line),("Current paragraph","F7",self.announce_paragraph),("Entire document","F8",self.announce_document)):
-            action=QAction(name,self); action.setShortcut(QKeySequence(shortcut)); action.triggered.connect(fn); read.addAction(action)
-    def _cursor_changed(self): self.statusBar().showMessage(f"Line {self.editor.textCursor().blockNumber()+1}, column {self.editor.textCursor().columnNumber()+1}")
+        # QPlainTextEdit is the accessibility source of truth.  Do not add
+        # synthetic line/caret speech that can report a neighbouring block.
+    def _cursor_changed(self):
+        cursor = self.editor.textCursor()
+        block = cursor.block()
+        start, end, caret = self.editor.accessibility_line_range()
+        # Keep assistive technology synchronized with the native caret after
+        # Up/Down, Enter, deletion, and edits.  Qt's text interface reads the
+        # live cursor; this event makes the change observable immediately.
+        # Qt/NVDA can derive the preceding paragraph as spoken context when a
+        # caret-moved event targets a zero-length block.  For an empty line the
+        # explicit blank announcement below is the complete announcement;
+        # the live QAccessible text interface still exposes the real caret and
+        # range without manufacturing a neighboring line event.
+        if start != end:
+            QAccessible.updateAccessibility(QAccessibleEvent(self.editor, QAccessible.Event.TextCaretMoved))
+        self.statusBar().showMessage(f"Line {block.blockNumber()+1}, column {cursor.columnNumber()+1}")
+        # QPlainTextEdit remains the source of truth.  This is only a small
+        # AO2 fallback for stacks that expose an empty QTextBlock without a
+        # usable spoken indication.  It is transition-based, so it cannot
+        # repeatedly speak while the caret remains in the same blank block.
+        if start == end:
+            blank_range = (start, end, caret)
+            if blank_range != self._last_blank_range:
+                self._last_blank_range = blank_range
+                self.announcer.blank_line()
+        else:
+            self._last_blank_range = None
+    def _document_changed(self):
+        # A new document can reuse the same offset. Invalidate the fallback
+        # rather than identifying a line by cached text or block number.
+        self._last_blank_range = None
     def set_language(self, key):
         self.document.set_table(key); self.editor.setLayoutDirection(Qt.RightToLeft if self.document.table.info.rtl else Qt.LeftToRight)
         self.announcer.send(f"Braille language: {self.document.table.info.language}.")
@@ -73,21 +153,41 @@ class BrailleWindow(QMainWindow):
                 current = self.editor.textCursor(); end = current.position(); text = self.editor.toPlainText()
                 word_start = end
                 while word_start > 0 and not text[word_start-1].isspace(): word_start -= 1
-                current.setPosition(word_start); current.setPosition(end, current.KeepAnchor); current.insertText(translated)
+                current.setPosition(word_start); current.setPosition(end, QTextCursor.MoveMode.KeepAnchor); current.insertText(translated)
                 self.editor.setTextCursor(current)
         self.editor.composer.clear(); self.announcer.committed(cell); self._cursor_changed()
-    def announce_cursor(self, key=None):
-        cursor=self.editor.textCursor(); block=cursor.block(); line=block.text(); pos=cursor.positionInBlock()
-        if key in (Qt.Key_Up,Qt.Key_Down): self.announcer.send(f"Line {block.blockNumber()+1}. {line or 'Blank line'}.", False)
-        elif line and pos < len(line): self.announcer.send(self._spoken_char(line[pos]), False)
-        else: self.announcer.send("End of line.", False)
+    def insert_space(self):
+        """Insert a document word boundary without involving a language table."""
+        cursor = self.editor.textCursor()
+        self.document.cursor = cursor.position()
+        self.document.space()
+        cursor.insertText(" ")
+        self.editor.setTextCursor(cursor)
+        self._cursor_changed()
+    def insert_line_break(self, event):
+        """Record metadata and perform a native Notepad-style paragraph split.
+
+        ``QPlainTextEdit`` stores lines as QTextBlocks.  Using the cursor's
+        native block operation here is important: inserting a literal '\n'
+        looks equivalent in plain text, but it does not preserve the same
+        paragraph/undo semantics when a selection or an existing block
+        boundary is involved.
+        """
+        # The Qt document is authoritative: create the real block and move
+        # the real caret first.  Braille metadata is updated afterward and is
+        # never consulted for line count or navigation.
+        cursor = self.editor.textCursor()
+        cursor.insertBlock()
+        self.editor.setTextCursor(cursor)
+        self.document.cursor = max(0, min(cursor.position() - 1, len(self.document.cells)))
+        self.document.line_break()
+        event.accept()
     def announce_word(self):
         text=self.editor.toPlainText(); p=self.editor.textCursor().position(); start=p
         while start>0 and not text[start-1].isspace(): start-=1
         end=p
         while end<len(text) and not text[end].isspace(): end+=1
         self.announcer.send(text[start:end] or "Blank.", False)
-    def _spoken_char(self, char): return {" ":"space", "\n":"new line", ".":"period", ",":"comma"}.get(char,char)
     def announce_line(self): self.announcer.send(self.editor.textCursor().block().text() or "Blank line.")
     def announce_paragraph(self):
         text=self.editor.toPlainText(); index=len(text[:self.editor.textCursor().position()].split("\n\n")); parts=text.split("\n\n"); self.announcer.send(f"Paragraph {index}. {parts[index-1] if index<=len(parts) else ''}")
