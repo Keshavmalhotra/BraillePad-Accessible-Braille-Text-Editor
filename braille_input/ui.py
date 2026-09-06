@@ -27,7 +27,7 @@ class BrailleTextCtrl(wx.TextCtrl):
         self.SetName("Braille text document")
         self.Bind(wx.EVT_CHAR, self._on_char)
         self.Bind(wx.EVT_KEY_DOWN, self._on_key_down)
-        self.Bind(wx.EVT_TEXT, lambda event: (self.owner._cursor_changed(), event.Skip()))
+        self.Bind(wx.EVT_TEXT, lambda event: (self.owner._text_changed(), event.Skip()))
         self.Bind(wx.EVT_SET_FOCUS, lambda event: (self.owner._cursor_changed(), event.Skip()))
 
     def _on_char(self, event):
@@ -82,13 +82,37 @@ class BrailleTextCtrl(wx.TextCtrl):
 class BrailleWindow(wx.Frame):
     def __init__(self):
         super().__init__(None, title="BraillePad: Accessible Braille Text Editor", size=(900, 650))
-        self.document = BrailleDocument(); self.path = None
+        self.document = BrailleDocument(); self.path = None; self.modified = False; self._loading = False
         self.announcer = Announcer()
         panel = wx.Panel(self); box = wx.BoxSizer(wx.VERTICAL)
         self.editor = BrailleTextCtrl(panel, self); box.Add(self.editor, 1, wx.EXPAND)
         self.status = wx.StaticText(panel, label="Line 1, column 1")
         box.Add(self.status, 0, wx.EXPAND | wx.ALL, 3); panel.SetSizer(box)
         self._make_menu(); self.CreateStatusBar(); self.SetStatusText("Braille input: mandatory")
+        self.Bind(wx.EVT_CLOSE, self._on_close)
+
+    def _text_changed(self):
+        if not self._loading:
+            self.modified = True
+        self._cursor_changed()
+
+    def _confirm_save(self):
+        if not self.modified:
+            return True
+        name = self.path.name if self.path else "Untitled document"
+        dialog = wx.MessageDialog(self, f"Do you want to save changes to {name}?",
+                                  "Save changes", wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+        result = dialog.ShowModal(); dialog.Destroy()
+        if result == wx.ID_YES:
+            self.save_document()
+            return not self.modified
+        return result == wx.ID_NO
+
+    def _on_close(self, event):
+        if self._confirm_save():
+            self.Destroy()
+        else:
+            event.Veto()
 
     def _make_menu(self):
         bar = wx.MenuBar(); file_menu = wx.Menu()
@@ -129,9 +153,12 @@ class BrailleWindow(wx.Frame):
         start, end = self.editor.GetSelection(); self.editor.Replace(start, end, "\n"); self.editor.SetInsertionPoint(start + 1); self._cursor_changed()
 
     def new_document(self):
-        self.editor.Clear(); self.editor.composer.clear(); self.document = BrailleDocument(); self.path = None
+        if not self._confirm_save(): return
+        self._loading = True; self.editor.Clear(); self._loading = False
+        self.editor.composer.clear(); self.document = BrailleDocument(); self.path = None; self.modified = False
 
     def open_document(self):
+        if not self._confirm_save(): return
         with wx.FileDialog(self, "Open document", wildcard="Text (*.txt)|*.txt|Braille document (*.json)|*.json", style=wx.FD_OPEN) as dialog:
             if dialog.ShowModal() != wx.ID_OK: return
             p = Path(dialog.GetPath())
@@ -139,7 +166,8 @@ class BrailleWindow(wx.Frame):
             saved = json.loads(p.read_text(encoding="utf-8")); self.document = BrailleDocument.from_snapshot(saved.get("braille", saved)); text = saved.get("text", self.document.text)
         else:
             text = p.read_text(encoding="utf-8"); self.document = BrailleDocument()
-        self.editor.SetValue(text); self.editor.composer.clear(); self.path = p; self._cursor_changed()
+        self._loading = True; self.editor.SetValue(text); self._loading = False
+        self.editor.composer.clear(); self.path = p; self.modified = False; self._cursor_changed()
 
     def save_document(self):
         if not self.path: return self.save_as()
@@ -147,6 +175,7 @@ class BrailleWindow(wx.Frame):
             data = {"version": 1, "text": self.editor.GetValue(), "braille": self.document.snapshot()}
             self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         else: self.path.write_text(self.editor.GetValue(), encoding="utf-8")
+        self.modified = False
 
     def save_as(self):
         with wx.FileDialog(self, "Save document", defaultFile="document.txt", wildcard="Text (*.txt)|*.txt|Braille document (*.json)|*.json", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as dialog:
