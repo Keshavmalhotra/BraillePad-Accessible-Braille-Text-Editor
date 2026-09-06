@@ -25,7 +25,7 @@ text document.
 Double-click:
 
 ```text
-VirtualBraille.pyw
+BraillePad.pyw
 ```
 
 This starts the application without leaving a terminal window open. You can
@@ -268,7 +268,7 @@ assumed to be fully implemented yet.
 
 ### The application does not start
 
-Run `VirtualBraille.pyw` by double-clicking it. If it still fails, launch it
+Run `BraillePad.pyw` by double-clicking it. If it still fails, launch it
 from a terminal once with:
 
 ```text

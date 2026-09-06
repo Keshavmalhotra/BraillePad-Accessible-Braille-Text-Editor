@@ -19,7 +19,7 @@ numeric keyboard input. Tab remains a normal editor key.
 
 ## Run on Windows
 
-Double-click `VirtualBraille.pyw` or `run.bat`.
+Double-click `BraillePad.pyw` or `run.bat`.
 
 From the repository root, run:
 
