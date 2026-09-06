@@ -1,4 +1,13 @@
-import sys
-from PySide6.QtWidgets import QApplication
+import wx
 from .ui import BrailleWindow
-app=QApplication(sys.argv); w=BrailleWindow(); w.show(); sys.exit(app.exec())
+
+
+class BrailleApp(wx.App):
+    def OnInit(self):
+        self.window = BrailleWindow()
+        self.window.Show()
+        return True
+
+
+if __name__ == "__main__":
+    BrailleApp(False).MainLoop()

@@ -15,13 +15,13 @@ Command Prompt, run this command from the repository root:
 python -m braille_input
 ```
 
-The application requires Python, PySide6, and the bundled `vendor` directory.
+The application requires Python, wxPython, and the bundled `vendor` directory.
 The vendor directory must remain beside the `braille_input` package because it
 contains `lou_translate.exe` and the translation tables.
 
 ## 2. The editor
 
-The central area is a normal multiline Qt text editor. The cursor can be moved
+The central area is wxPython's native multiline text editor. The cursor can be moved
 through the document, text can be selected, and text can be inserted at the
 cursor or used to replace a selection. Long lines are not wrapped; they can be
 scrolled horizontally.
@@ -31,14 +31,14 @@ Copy, Paste), and **Braille language** (translation-profile selection). The
 status bar shows the current logical line and column. Empty lines are retained
 during navigation and saving.
 
-### Why the editor uses Qt
+### Why the editor uses wxPython
 
-The text area is PySide6's native `QPlainTextEdit`, backed by Qt's
-`QTextDocument`, `QTextBlock`, and `QTextCursor`. Braille key handling is the
-only custom editor-subclass behavior; document lines, caret movement,
-selection, clipboard, undo/redo, accessibility text, and no-wrap scrolling
-remain native Qt behavior. This preserves real empty lines and avoids a second
-custom current-line or current-caret model. Empty lines receive no custom
+The text area is wxPython's native multiline `TextCtrl` with `TE_DONTWRAP` and
+horizontal scrolling. Braille key handling is the only custom control behavior;
+document lines, caret movement, selection, clipboard, undo/redo, accessibility
+text, and no-wrap scrolling remain native widget behavior. This preserves real
+empty lines and avoids a second custom current-line or current-caret model.
+Empty lines receive no custom
 speech announcement; native accessibility is allowed to handle their actual
 zero-length text range naturally.
 
@@ -99,10 +99,10 @@ Changing profiles does not rewrite text already present in the editor.
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
 | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | Cut / copy / paste |
 | Arrow, Home, End | Move the caret |
-| `Ctrl` + Arrow | Move by word where supported by Qt |
+| `Ctrl` + Arrow | Move by word using the native editor |
 | `Shift` + navigation | Select text |
 
-Clicking in the document places the real Qt text cursor. Braille output is
+Clicking in the document places the real native text cursor. Braille output is
 inserted at that position, not automatically at the end of the file.
 
 ## 6. Open and save files
@@ -115,7 +115,8 @@ document version. The visible `text` remains the document content.
 
 ## 7. Accessibility behavior
 
-BraillePad exposes the central editor through Qt's accessible text interface.
+BraillePad exposes the central editor through wxPython's native platform
+accessible text control.
 Assistive technology can inspect the actual document, caret, logical lines,
 selections, and empty lines. The status bar also reports line and column.
 
@@ -135,7 +136,7 @@ Run it from a terminal to see the error:
 python -m braille_input
 ```
 
-Confirm that PySide6 is installed and that
+Confirm that wxPython is installed and that
 `vendor\\bin\\lou_translate.exe` exists. Do not move or rename `vendor`.
 
 ### Letters or punctuation do not appear

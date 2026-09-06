@@ -1,9 +1,9 @@
 # BraillePad — Accessible Braille Text Editor
 
 BraillePad is a Windows desktop text editor for entering Unicode text through
-six-dot Braille. It is built with Python, PySide6, and the bundled Liblouis
+six-dot Braille. It is built with Python, wxPython, and the bundled Liblouis
 translation engine. The editor is keyboard-first and exposes its document
-through Qt's accessibility interfaces.
+through the native wxPython/Windows accessibility stack.
 
 ## UI and editor architecture
 
@@ -12,16 +12,16 @@ and accessibility problems:
 
 | Concern | Current implementation |
 |---|---|
-| GUI framework | PySide6 / Qt Widgets |
-| Text editor | Native `QPlainTextEdit` subclass used only for Braille key input |
-| Document model | Native Qt `QTextDocument` and `QTextBlock` objects |
-| Cursor and selection | Native `QTextCursor` |
-| Accessibility | Native Qt accessible text interface; AO2 remains available for input/status output |
-| Wrapping | Native `NoWrap`; long lines scroll horizontally |
-| Editing | Native Qt navigation, selection, clipboard, undo, and redo |
+| GUI framework | wxPython / wx Widgets |
+| Text editor | Native multiline `wx.TextCtrl` with `TE_DONTWRAP` |
+| Document model | Native wx text-control document and real line breaks |
+| Cursor and selection | Native wx insertion point and selection |
+| Accessibility | Native wx/Windows control accessibility; AO2 remains available for input/status output |
+| Wrapping | Native no-wrap style; long lines scroll horizontally |
+| Editing | Native wx navigation, selection, clipboard, undo, and redo |
 
 This is intentionally not a custom line/caret model. Regression tests verify
-real Enter-created lines, consecutive empty blocks, native Up/Down movement,
+real Enter-created lines, consecutive empty lines, native Up/Down movement,
 no-wrap behavior, boundary stopping, and real empty-line caret ranges. Empty
 lines do not trigger custom speech and adjacent text is never substituted.
 Because the current native widget satisfies these requirements, no replacement
@@ -49,7 +49,7 @@ cell and starts a new native editor line.
 
 Braille input is mandatory and cannot be disabled. Ordinary printable letters
 and punctuation must be entered through Braille cells. Navigation, selection,
-clipboard commands, undo, redo, and editing remain standard Qt text-editor
+clipboard commands, undo, redo, and editing remain standard native text-editor
 operations.
 
 ## Translation profiles
@@ -68,10 +68,10 @@ runtime and tables required by the application.
 
 ## Running on Windows
 
-Install Python 3.10 or newer and PySide6, then run from the repository root:
+Install Python 3.10 or newer and wxPython, then run from the repository root:
 
 ```text
-python -m pip install PySide6 pytest
+python -m pip install wxPython pytest
 python -m braille_input
 ```
 
@@ -90,9 +90,10 @@ interoperability.
 
 ## Accessibility
 
-The editor uses a `QPlainTextEdit` as the authoritative accessible text
-document. It reports the real caret, logical lines, selections, and empty
-lines through Qt accessibility APIs. AO2 output is used for Braille input and
+The editor uses wxPython's native multiline text control as the authoritative
+accessible text document. It reports the real caret, logical lines,
+selections, and empty lines through the platform control accessibility stack.
+AO2 output is used for Braille input and
 status announcements when an AO2-compatible driver is available. NVDA/JAWS
 and physical Braille-display behavior still require testing on the target
 machine.
