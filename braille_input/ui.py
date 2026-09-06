@@ -89,7 +89,7 @@ class BrailleTextEdit(QPlainTextEdit):
 
 class BrailleWindow(QMainWindow):
     def __init__(self):
-        super().__init__(); self.setWindowTitle("Six-Dot Braille Text Editor"); self.document=BrailleDocument(); self.editor=BrailleTextEdit(self); self.setCentralWidget(self.editor); self.setStatusBar(QStatusBar()); self.announcer=Announcer(); self.path=None; self._last_blank_range=None; self._make_actions(); self.editor.cursorPositionChanged.connect(self._cursor_changed); self.editor.textChanged.connect(self._document_changed)
+        super().__init__(); self.setWindowTitle("BraillePad: Accessible Braille Text Editor"); self.document=BrailleDocument(); self.editor=BrailleTextEdit(self); self.setCentralWidget(self.editor); self.setStatusBar(QStatusBar()); self.announcer=Announcer(); self.path=None; self._last_blank_range=None; self._make_actions(); self.editor.cursorPositionChanged.connect(self._cursor_changed); self.editor.textChanged.connect(self._document_changed)
     def _make_actions(self):
         menu=self.menuBar().addMenu("File")
         for name, shortcut, fn in (("New","Ctrl+N",self.new_document),("Open","Ctrl+O",self.open_document),("Save","Ctrl+S",self.save_document),("Save As","Ctrl+Shift+S",self.save_as)):

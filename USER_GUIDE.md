@@ -1,8 +1,8 @@
-# Six-Dot Numeric Braille Text Editor — User Guide
+# BraillePad: Accessible Braille Text Editor — User Guide
 
 ## What this application is
 
-Six-Dot Numeric Braille Text Editor is a normal text editor with an additional
+BraillePad is a normal text editor with an additional
 input method. You can write ordinary documents containing letters, numbers,
 punctuation, words, sentences, paragraphs, and multiple lines.
 

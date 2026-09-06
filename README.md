@@ -1,6 +1,6 @@
-# Six-Dot Numeric Braille Text Editor
+# BraillePad: Accessible Braille Text Editor
 
-Six-Dot Numeric Braille Text Editor is a keyboard-first Windows text editor
+BraillePad is a keyboard-first Windows text editor
 with direct six-dot Braille input. Type the numbers of the active dots, then
 press `Space` to commit a Braille cell. For example, `1245` produces `g`.
 
